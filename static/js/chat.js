@@ -7,6 +7,7 @@ function Chat(controller) {
 		,msg = $('#message')
 		,name = $('#nickname')
 		,history = $('#chatHistory')
+		,isPlaying = 0
 		,self = this;
 
 
@@ -53,7 +54,10 @@ function Chat(controller) {
 	}
 
 	function fnPLAY(data) {
-		fnNOTICE('Playing '+formatSong(data.song,0));
+		if(!isPlaying) {
+			isPlaying=1;
+			fnNOTICE('Playing '+formatSong(data.song,0));
+		}
 	}
 
 	function fnPART(data) {
@@ -65,8 +69,11 @@ function Chat(controller) {
 	}
 
 	function fnSTOP(data) {
-		if(data.song) {
-			fnNOTICE('Finished playing '+formatSong(data.song,0));
+		if(isPlaying) {
+			isPlaying=0;
+			if(data.song) {
+				fnNOTICE('Finished playing '+formatSong(data.song,0));
+			}
 		}
 	}
 
