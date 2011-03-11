@@ -12,13 +12,8 @@ function Player(controller) {
 	function fnPLAY(data) {
 		var start = new Date().getTime();
 
-		if(sound) {
-			if(sound.id == data.song.uuid) {
-				sound.setPosition(data.position);
-				return;
-			} else {
-				fnSTOP();
-			}
+		if(isPlaying) {
+			return;
 		}
 
 		sound = soundManager.createSound({
@@ -52,15 +47,13 @@ function Player(controller) {
 	}
 
 	function fnSTOP(data) {
-		if(isPlaying) {
-			isPlaying = 0;
-			remaining.html('');
-			if(sound !== undefined) {
-				sound.stop();
-				sound.unload();
-				sound.destruct();
-				sound = null; 
-			}
+		isPlaying = 0;
+		remaining.html('');
+		if(sound) {
+			sound.stop();
+			sound.unload();
+			sound.destruct();
+			sound = null; 
 		}
 	}
 
