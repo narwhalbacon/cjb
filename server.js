@@ -17,17 +17,16 @@ var connect = require('connect')
 	;
 
 // clean up any old data
-var directories = ['static/images', 'static/music', config.uploadDir];
+var directories = ['/static/images/', '/static/music/', '/uploads/'];
 for(var i in directories) {
-	fs.readdir(directories[i], function(err, files) {
-		for(file in files) {
-			if(files[file] != 'nocover.jpg' &&
-			  files[file] != '.gitignore') {
-				util.log('Unlinking '+files[file]);
-				fs.unlink(directories[i]+'/'+files[file]);
-			}
+	var files = fs.readdirSync(__dirname+directories[i]);
+	for(j in files) {
+		if(files[j] != 'nocover.jpg' &&
+		  files[j] != '.gitignore') {
+			util.log('Unlinking '+directories[i]+files[j]);
+			fs.unlink(__dirname+directories[i]+files[j]);
 		}
-	});
+	};
 }
 
 //Setup Express
@@ -208,7 +207,7 @@ server.post('/upload', function(req,res) {
 		,data = {}; 
 
 	form.keepExtensions = true;
-	form.uploadDir = config.uploadDir;
+	form.uploadDir = __dirname+'/uploads';
 
 	form.on('error', function(err) {
 		util.log('upload error: '+err);
