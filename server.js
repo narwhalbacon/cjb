@@ -17,35 +17,23 @@ var connect = require('connect')
 	;
 
 // clean up any old data
-fs.readdir('static/images', function(err, files) {
-	for(file in files) {
-		if(files[file] != 'nocover.jpg') {
-			util.log('Unlinking '+files[file]);
-			fs.unlink('static/images/'+files[file]);
+var directories = ['static/images', 'static/music', config.uploadDir];
+for(var i in directories) {
+	fs.readdir(directories[i], function(err, files) {
+		for(file in files) {
+			if(files[file] != 'nocover.jpg' &&
+			  files[file] != '.gitignore') {
+				util.log('Unlinking '+files[file]);
+				fs.unlink(directories[i]+'/'+files[file]);
+			}
 		}
-	}
-});
-fs.readdir('static/music', function(err, files) {
-	for(file in files) {
-		util.log('Unlinking '+files[file]);
-		fs.unlink('static/music/'+files[file]);
-	}
-});
-fs.readdir(config.uploadDir, function(err, files) {
-	for(file in files) {
-		util.log('Unlinking '+files[file]);
-		fs.unlink(config.uploadDir+'/'+files[file]);
-	}
-});
+	});
+}
 
 //Setup Express
 var server = express.createServer();
 server.configure(function() {
 	server.set('views', __dirname + '/views');
-/*
-	server.use(connect.bodyDecoder());
-	server.use(connect.staticProvider(__dirname + '/static'));
-*/
 	server.use(connect.bodyParser());
 	server.use(connect.static(__dirname + '/static'));
 	server.use(server.router);
@@ -151,14 +139,14 @@ io.on('connection', function(client){
 					type:'NAMES'
 					,members:getMembers()
 				});
-//				if(queue.length) {
-					client.send({
-						type:'SONGS'
-						,queue:queue
-						,songs:getSongs()
-					});
-				client.send({type:'STOP'});
-//				}
+				client.send({
+					type:'SONGS'
+					,queue:queue
+					,songs:getSongs()
+				});
+				if(!currentSongStarted) {
+					client.send({type:'STOP'});
+				}
 				break;
 
 			default: // should never see this
@@ -334,13 +322,18 @@ setInterval(function() {
 			,members:getMembers()
 		});
 	}
-//	if(queue.length) {
+	io.broadcast({
+		type:'SONGS'
+		,queue:queue
+		,songs:getSongs()
+	});
+	if(currentSongStarted) {
 		io.broadcast({
-			type:'SONGS'
-			,queue:queue
-			,songs:getSongs()
+			type:'PLAY'
+			,song:songs[queue[0]]
+			,position:(new Date().getTime())-currentSongStarted
 		});
-//	}
+	};
 
 	// clear out song data if if not in the queue anymore
 	var now = new Date().getTime();
