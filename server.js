@@ -246,7 +246,7 @@ server.post('/upload', function(req,res) {
 				,song:song
 			});
 			util.log('user:'+user.uuid+':'+user.name+
-				' uploading song:'+song.uuid+' - '+file.name);
+				' uploading song:'+song.uuid+':'+file.name);
 		}
 	});
 
@@ -283,8 +283,9 @@ server.post('/upload', function(req,res) {
 
 		info.song.progress = 100;
 		info.song.ts = new Date().getTime();
-		util.log('user:'+info.user.uuid+':'+info.user.name+
-				' finished uploading song:'+info.song.uuid);
+		util.log('user:'+info.user.uuid
+		  +' finished uploading song:'+info.song.uuid
+		  +'; size:'+info.fileinfo.size);
 		processSong(info.song, info.fileinfo);
 	});
 
@@ -444,6 +445,9 @@ function processSong(song, fileinfo) {
 		song.duration = formatDuration(song.length);
 		song.state=2; // ready
 		io.broadcast({type:'UPDATE', song:song});
+		var stats = fs.statSync(__dirname+'/static/music/'+song.uuid+'.mp3');
+		util.log('finished processing song:'+song.uuid
+		  +'; size:'+stats.size);
 	});
 }
 
