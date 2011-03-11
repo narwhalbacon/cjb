@@ -44,14 +44,14 @@ server.error(function(err, req, res, next) {
 	if (err instanceof NotFound) {
 		res.render('404.ejs', {
 			locals: { 
-	                	header: config.page.header
-	                	,footer: config.page.footer
-	                	,title : '404 - Not Found'
-	                	,description: ''
-	                	,author: ''
+				header: config.page.header
+				,footer: config.page.footer
+				,title : '404 - Not Found'
+				,description: ''
+				,author: ''
 				,scriptversion:1
 				,extrascripts:[]
-	                },
+			},
 			status: 404
 		});
 	} else {
@@ -68,7 +68,7 @@ server.error(function(err, req, res, next) {
 			},
 			status: 500
 		});
-    }
+	}
 });
 server.listen(port);
 
@@ -92,7 +92,7 @@ io.on('connection', function(client){
 
 			case 'MSG': // someone has sent a message
 				message.who=session.name;
-	                        util.log('user:'+session.uuid+':'+session.name+': '+message.message);
+				util.log('user:'+session.uuid+':'+session.name+': '+message.message);
 				io.broadcast(message);
 				break;
 
@@ -106,9 +106,9 @@ io.on('connection', function(client){
 					,oldname:session.name
 					,name:name
 				});
-	                        util.log('user:'+session.uuid+':'+session.name+' is now '+name);
+				util.log('user:'+session.uuid+':'+session.name+' is now '+name);
 				session.name = name;
-                                break;
+				break;
 
 			case 'READY': // user is ready for music
 				if(currentSongStarted) {
@@ -166,7 +166,7 @@ io.on('connection', function(client){
 				,uuid:session.uuid
 			});
 		}
-               	delete sessions[client.sessionId];
+		delete sessions[client.sessionId];
 	});
 });
 
@@ -241,7 +241,7 @@ server.post('/upload', function(req,res) {
 			};
 
 			songs[song.uuid] = song;
-        		queue.push(song.uuid);
+			queue.push(song.uuid);
 			io.broadcast({
 				'type':'ENQUEUE'
 				,song:song
