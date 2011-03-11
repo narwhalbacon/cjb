@@ -44,7 +44,6 @@ function Controller(user) {
 
 	// initialize
 	socket = new io.Socket(null, {
-		//port: 80,
 		transports: ['websocket', 'htmlfile', 'xhr-multipart', 'xhr-polling']
 	});
 	socket.on('connect', function(data) { connect(data); });
