@@ -11,7 +11,6 @@ exports.page = {
 };
 
 exports.server = {
-	// if you change this, you'll need to edit static/js/controller.js, too
-	port: 80
-	,gettags: 1
+	port: 8080
+	,gettags: 0
 };
