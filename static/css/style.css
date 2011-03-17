@@ -180,8 +180,12 @@ input[type="submit"] {
 	padding: 2px 4px;
 }
 
+#nickname {
+	/*background: rgb(209,222,233);*/
+	width: 300px;
+}
 #change {
-	width: 60px;
+	float: right;
 }
 #chatHistory {
 	background: #eee;
@@ -208,13 +212,12 @@ input[type="submit"] {
 	color: rgb(178,34,34);
 }
 #message {
+	background: rgb(243,238,215);
 	width: 400px;
-}
-#nickname {
-	width: 340px;
 }
 #say {
 	width: 50px;
+	float: right;
 }
 #playing {
 	height: 400px;
@@ -237,6 +240,10 @@ input[type="submit"] {
 .length.long {
 	color: rgb(178,34,34);
 	font-weight: bolder;
+}
+.watermark {
+	color: grey;
+	font-style: italic;
 }
 
 /**

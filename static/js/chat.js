@@ -87,6 +87,12 @@ function Chat(controller) {
 	} 
 
 	// initialize
+	msg.val(msg.data('watermark')).addClass('watermark').click(function() {
+		if(msg.val() == msg.data('watermark')) {
+			msg.val('').removeClass('watermark');
+		}
+	});
+			
 	$('#formChat').submit(function() {
 		if(msg.val() != '') {
 			controller.send({type:'MSG', message:msg.val()});
@@ -96,14 +102,15 @@ function Chat(controller) {
 	});
 
 	$('#formNickname').submit(function() {
-		controller.send({type:'NICK', name:name.val()});
+		if(name.val() != $.cookie('name')) {
+			controller.send({type:'NICK', name:name.val()});
+		}
 		return false;
 	});
 
 	setInterval(function() {
 		$(history).children('li').slice(100).detach();
 	}, 60000);
-
 
 	controller.register('DEQUEUE', fnDEQUEUE);
 	controller.register('ENQUEUE', fnENQUEUE);
