@@ -81,11 +81,22 @@ function Player(controller) {
 		}
 	});
 
+	// does the browser support input[type=range] ?
+	if(Modernizr.inputtypes.range) {
+		$('#volume').change(function(e) {
+			if(sound) {
+				soundManager.setVolume('cjb', parseInt($(e.target).val()));
+			}
+		});
+	} else {
+		$('#volume').parent().hide();
+	}
+
 	controller.register('PLAY', fnPLAY);
 	controller.register('STOP', fnSTOP);
 
 	soundManager.debugMode = false;
-	soundManager.defaultOptions.volume = 50;
+	soundManager.defaultOptions.volume = $('#volume').val();
 	soundManager.url = '/swf/';
 	//soundManager.useHTML5Audio = $('html').hasClass('audio');	// use html5 audio if available
 	soundManager.onerror = function() { $('#error').html('SoundManager failed to load; perhaps you are blocking Flash?'); };
