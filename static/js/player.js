@@ -3,7 +3,8 @@ function Player(controller) {
 
 	// PRIVATE
 	var isPlaying = 0
-		,mute = 0
+		,muteone = $('#muteone')
+		,muteall = $('#muteall')
 		,remaining = $('#songRemaining')
 		,self  = this
 		,sound = null
@@ -14,6 +15,10 @@ function Player(controller) {
 
 		if(isPlaying) {
 			return;
+		}
+
+		if(muteone.data('status')) {
+			muteone.click();
 		}
 
 		sound = soundManager.createSound({
@@ -35,7 +40,7 @@ function Player(controller) {
 			,whileplaying:function() { 
 				switch(this.readyState) {
 					case 0: remaining.html('');break;
-					case 1: remaining.html('(loading)');break;
+					case 1: remaining.html('(buffering)');break;
 					case 2: remaining.html('(failed/error)');break;
 					case 3: remaining.html('('+calcDuration(this.duration-this.position)+')');break;
 					default: remaining.html('');break;
@@ -43,7 +48,7 @@ function Player(controller) {
 			}
 		});
 
-		if(mute) { sound.mute(); }
+		if(muteone.data('status') || muteall.data('status')) { sound.mute(); }
 	}
 
 	function fnSTOP(data) {
@@ -60,12 +65,19 @@ function Player(controller) {
 	// PRIVILEGED
 
 	// initialize
-	$('#mute').click(function(e) {
+	$('#muteone, #muteall').click(function(e) {
 		var button = $(e.target);
-		button.html( button.html() == 'Mute' ? 'Unmute' : 'Mute' );
-		mute = !mute;
+		var status = button.data('status', !button.data('status')).data('status');
+		button.html( status ? button.data('unmute') : button.data('mute') );
 		if(sound) {
-			mute ? sound.mute() : sound.unmute();
+			if(muteone.data('status') || muteall.data('status')) {
+				sound.mute();
+			} else {
+				sound.unmute();
+			}
+		}
+		if(button.attr('id') == 'muteall') {
+			muteone.attr('disabled', status?'disabled':'');
 		}
 	});
 
@@ -78,5 +90,4 @@ function Player(controller) {
 	//soundManager.useHTML5Audio = $('html').hasClass('audio');	// use html5 audio if available
 	soundManager.onerror = function() { $('#error').html('SoundManager failed to load; perhaps you are blocking Flash?'); };
 	soundManager.onready(function() { controller.send({type:'READY'}); });
-
 }
