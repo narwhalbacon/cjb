@@ -23,8 +23,7 @@ for(var i in directories) {
 	for(j in files) {
 		if(files[j] != 'nocover.jpg' &&
 		  files[j] != '.gitignore') {
-			util.log('Unlinking '+directories[i]+files[j]);
-			fs.unlink(__dirname+directories[i]+files[j]);
+			unlinkFile(__dirname+directories[i]+files[j]);
 		}
 	};
 }
@@ -339,11 +338,9 @@ setInterval(function() {
 	var now = new Date().getTime();
 	for(var uuid in songs) {
 		if(queue.indexOf(uuid) == -1) {
-			util.log('CLEANUP: Unlinking '+uuid+'.mp3');
-			fs.unlink(__dirname+'/static/music/'+uuid+'.mp3');
+			unlinkFile(__dirname+'/static/music/'+uuid+'.mp3');
 			if(songs[uuid].cover) {
-				util.log('CLEANUP: Unlinking '+uuid+'.jpg');
-				fs.unlink(__dirname+'/static/images/'+uuid+'.jpg');
+				unlinkFile(__dirname+'/static/images/'+uuid+'.jpg');
 			}
 			delete songs[uuid];
 		} else {
@@ -441,7 +438,7 @@ function processSong(song, fileinfo) {
 		if(match) { song.length = match[1]*1000; }
 	});
 	ffmpeg.on('exit', function(code) {
-		fs.unlink(fileinfo.path);
+		unlinkFile(fileinfo.path);
 		song.duration = formatDuration(song.length);
 		song.state=2; // ready
 		io.broadcast({type:'UPDATE', song:song});
@@ -534,4 +531,10 @@ function formatDuration(length) {
 		if(sec < 10) { sec = '0'+sec; }
 		return min+':'+sec;
 	}
+}
+
+function unlinkFile(filename) {
+        fs.unlink(filename, function(e) {
+                util.log('Unlink '+(e?e:filename));
+        });
 }
