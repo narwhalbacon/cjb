@@ -75,6 +75,7 @@ var playTimer = null;		// setTimout for current song
 var songs = {};			// song data
 var queue = [];			// FIFO queue songs UUIDs
 var sessions = {};		// who is at the website
+var clients = {};
 
 //Setup Socket.IO
 var io = io.listen(server);
@@ -123,16 +124,20 @@ io.on('connection', function(client){
 				if(message.name) {
 					session.name = escapeHtml(message.name);
 				}
+				util.log('Client '+client.sessionId+' user:'+session.uuid+' name:'+session.name+' ip:'+client.connection.remoteAddress);
 				client.send({
 					type:'NICK'
 					,uuid:session.uuid
 					,name:session.name
 				});
-				client.broadcast({
-					type:'JOIN'
-					,uuid:session.uuid
-					,name:session.name
-				});
+				if((session.uuid in clients) == false) {
+					client.broadcast({
+						type:'JOIN'
+						,uuid:session.uuid
+						,name:session.name
+					});
+				}
+				clients[session.uuid] = client.sessionId;
 				client.send({
 					type:'NAMES'
 					,members:getMembers()
@@ -158,11 +163,14 @@ io.on('connection', function(client){
 	// someone has disconnected
 	client.on('disconnect', function(){
 		var session = sessions[client.sessionId];
-		if(session.uuid) {
+		var clientid = clients[session.uuid];
+
+		if(session.uuid && clientid && clientid == client.sessionId) {
 			client.broadcast({
 				type:'PART'
 				,uuid:session.uuid
 			});
+			delete clients[session.uuid];
 		}
 		delete sessions[client.sessionId];
 	});
