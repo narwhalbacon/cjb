@@ -450,9 +450,15 @@ function processSong(song, fileinfo) {
 		song.duration = formatDuration(song.length);
 		song.state=2; // ready
 		io.broadcast({type:'UPDATE', song:song});
-		var stats = fs.statSync(__dirname+'/static/music/'+song.uuid+'.mp3');
-		util.log('finished processing song:'+song.uuid
-		  +'; size:'+stats.size);
+		fs.stat(__dirname+'/static/music/'+song.uuid+'.mp3', function(e,s) {
+			if(e) {
+				util.log('finished processing song:'+song.uuid);
+				util.log(e);
+			} else {
+				util.log('finished processing song:'+song.uuid
+					+'; size:'+s.size);
+			}
+		});
 	});
 }
 
