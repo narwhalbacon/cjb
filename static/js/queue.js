@@ -69,8 +69,8 @@ function Queue(controller) {
 			} else {
 				var toplay = new Date(ends+duration);
 				duration+=song.length;
-				html = '<li id="song-'+song.uuid+'">';
-				html += '@'+getHHMM(toplay);
+				html = '<li id="song-'+song.uuid+'" class="'+(song.who.uuid == $.cookie('uuid')?'mysong':'')+'">';
+				html += '>@'+getHHMM(toplay);
 				html += ' <span class="songinfo">'+formatSong(song,1)+'</span>';
 				if(song.state > 0) { // do not allow remove during uploading
 					html += remove;

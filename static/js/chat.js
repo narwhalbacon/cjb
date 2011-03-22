@@ -18,7 +18,7 @@ function Chat(controller) {
 	}
 
 	function fnENQUEUE(data) {
-		fnNOTICE(data.song.who+' added <span class="song-'+data.song.uuid+'">'+formatSong(data.song,0)+'</span>');
+		fnNOTICE(data.song.who.name+' added <span class="song-'+data.song.uuid+'">'+formatSong(data.song,0)+'</span>');
 	}
 
 	function fnJOIN(data) {

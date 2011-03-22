@@ -223,7 +223,10 @@ server.post('/upload', function(req,res) {
 	form.on('fileBegin', function(name, file) {
 		if(name == 'song') {
 			var match = /uuid=([^;]+)/.exec(req.headers.cookie);
-			var user = getSessionByUuid(match[1]);
+			var user = null;
+			if(match) {
+				user = getSessionByUuid(match[1]);
+			}
 			if(!user) { return; }
 			var song = {
 				uuid:generateUuid()
@@ -234,7 +237,7 @@ server.post('/upload', function(req,res) {
 				,length:0		// duration in ms
 				,duration:'0:00'	// human readable duration
 				,cover:0
-				,who:user.name
+				,who:{uuid:user.uuid, name:user.name}
 				,progress:0		// %
 				,state:0		// 0:uploading, 1:processing, 2:ready, 3:playing, 4:removed
 				,ts:new Date().getTime()

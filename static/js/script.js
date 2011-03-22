@@ -29,7 +29,7 @@ function formatPlayingSong(song) {
 		html += (song.url) ? '<a href="'+song.url+'" target="_new" title="Open in a new window/tab">'+song.album+'</a>' : song.album;
 		html += '</p>';
 	}
-	html += '<p>Added by <span class="by">'+(song.who)+'</span></p>';
+	html += '<p>Added by <span class="by">'+(song.who.name)+'</span></p>';
 	return html;
 }
 
@@ -45,7 +45,6 @@ function formatSong(song, status) {
 		html += '</span>';
 	}
 	if(status) {
-		html += '; added by <span class="by">'+(song.who)+'</span>';
 		switch(song.state) {
 			case 0:
 				html+= ' <span class="state">(uploading:'+song.progress+'%)</span>';
@@ -62,6 +61,7 @@ function formatSong(song, status) {
 
 			default: break;
 		}
+		html += '<br>added by <span class="by">'+(song.who.name)+'</span>';
 	}
 
 	return html;
