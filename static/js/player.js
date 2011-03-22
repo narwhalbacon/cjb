@@ -17,7 +17,7 @@ function Player(controller) {
 			return;
 		}
 
-		if(muteone.data('status')) {
+		if(parseInt(muteone.data('status'),10)) {
 			muteone.click();
 		}
 
@@ -48,7 +48,9 @@ function Player(controller) {
 			}
 		});
 
-		if(muteone.data('status') || muteall.data('status')) { sound.mute(); }
+		if(parseInt(muteone.data('status'),10) || parseInt(muteall.data('status'),10)) {
+			sound.mute();
+		}
 	}
 
 	function fnSTOP(data) {
@@ -67,17 +69,18 @@ function Player(controller) {
 	// initialize
 	$('#muteone, #muteall').click(function(e) {
 		var button = $(e.target);
-		var status = button.data('status', !button.data('status')).data('status');
-		button.html( status ? button.data('unmute') : button.data('mute') );
+		var status = parseInt(button.data('status')) == 1;
+		button.data('status', status?"0":"1");
+		button.html( status ? button.data('mute') : button.data('unmute') );
 		if(sound) {
-			if(muteone.data('status') || muteall.data('status')) {
+			if(parseInt(muteone.data('status'),10) || parseInt(muteall.data('status'),10)) {
 				sound.mute();
 			} else {
 				sound.unmute();
 			}
 		}
 		if(button.attr('id') == 'muteall') {
-			muteone.attr('disabled', status?'disabled':'');
+			muteone.attr('disabled', status?'':'disabled');
 		}
 	});
 
@@ -85,7 +88,7 @@ function Player(controller) {
 	if(Modernizr.inputtypes.range) {
 		$('#volume').change(function(e) {
 			if(sound) {
-				soundManager.setVolume('cjb', parseInt($(e.target).val()));
+				soundManager.setVolume('cjb', parseInt($(e.target).val(), 10));
 			}
 		});
 	} else {
@@ -94,11 +97,4 @@ function Player(controller) {
 
 	controller.register('PLAY', fnPLAY);
 	controller.register('STOP', fnSTOP);
-
-	soundManager.debugMode = false;
-	soundManager.defaultOptions.volume = $('#volume').val();
-	soundManager.url = '/swf/';
-	//soundManager.useHTML5Audio = $('html').hasClass('audio');	// use html5 audio if available
-	soundManager.onerror = function() { $('#error').html('SoundManager failed to load; perhaps you are blocking Flash?'); };
-	soundManager.onready(function() { controller.send({type:'READY'}); });
 }

@@ -36,19 +36,19 @@ function Controller(user) {
 	this.register = function(type, fn) {
 		if(handlers[type] == undefined) { handlers[type] = []; }
 		handlers[type].push(fn);
-	}
+	};
 
 	this.send = function(message) {
 		socket.send(message);
-	}
+	};
 
 	// initialize
-	socket = new io.Socket(null, {
-		transports: ['websocket', 'htmlfile', 'xhr-multipart', 'xhr-polling']
-	});
+	socket = new io.Socket();
 	socket.on('connect', function(data) { connect(data); });
 	socket.on('connect_failed', function(data) { disconnect(data); });
 	socket.on('disconnect', function(data) { disconnect(data); });
 	socket.on('message', function(data) { message(data); });
 	socket.connect();
+
+	soundManager.onready(function() { socket.send({type:'READY'}); });
 }

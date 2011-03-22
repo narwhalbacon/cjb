@@ -94,7 +94,7 @@ function Chat(controller) {
 	});
 			
 	$('#formChat').submit(function() {
-		if(msg.val() != '') {
+		if(msg.val() !== '') {
 			controller.send({type:'MSG', message:msg.val()});
 			msg.val('');
 		}

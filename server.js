@@ -194,12 +194,12 @@ server.get('/', function(req,res){
 			,extrascripts: [
 				 'socket.io.min.js'
 				,'soundmanager2.min.js'
+				,'plugins.js'
 				,'ajaxupload.js'
 				,'chat.js'
 				,'controller.js'
 				,'player.js'
 				,'queue.js'
-				,'plugins.js'
 				,'script.js'
 			]
 		}

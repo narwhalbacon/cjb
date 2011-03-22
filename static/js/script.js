@@ -36,14 +36,14 @@ function formatPlayingSong(song) {
 function formatSong(song, status) {
 	var html = '';
 	html += '<span class="title">'+(song.title||song.filename||'Unknown Title')+'</span>';
-	html += ' by <span class="artist">'+(song.artist||'Unknown Artist')+'</span>';
-
+	if(song.state>1) {
+		html += ' by <span class="artist">'+(song.artist||'Unknown Artist')+'</span>';
+	}
 	if(song.album) {
 		html += ' from <span class="album">';
 		html += (song.url) ? '<a href="'+song.url+'" target="_new" title="Open in a new window/tab">'+song.album+'</a>' : song.album;
 		html += '</span>';
 	}
-
 	if(status) {
 		html += '; added by <span class="by">'+(song.who)+'</span>';
 		switch(song.state) {
@@ -93,7 +93,7 @@ function displayCorrectTime() {
 	log('setting time');
 	var time24 = $('#time24').attr('checked');
         $('.clock').each(function() { $(this).html( time24 ? $(this).data('time24') : $(this).data('time12') ); });
-};
+}
 
 $(document).ready(function() {   
 	var controller = new Controller();
@@ -118,7 +118,7 @@ $(document).ready(function() {
 
 	// set the user's default
 	if($.cookie('time24') !== null) {
-		$('#time24').attr('checked', parseInt($.cookie('time24')));
+		$('#time24').attr('checked', parseInt($.cookie('time24'), 10));
 		displayCorrectTime();
 	}
 
