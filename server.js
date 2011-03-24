@@ -16,6 +16,11 @@ var connect = require('connect')
 	,port = (process.env.PORT || config.server.port || 8081)
 	;
 
+// add a trim function to the String object
+String.prototype.trim = function() {
+        return this.replace(/^\s+|\s+$/g,"");
+}
+
 // clean up any old data
 var directories = ['/static/images/', '/static/music/', '/uploads/'];
 for(var i in directories) {
@@ -96,17 +101,15 @@ io.on('connection', function(client){
 				break;
 
 			case 'NICK':  // user changes nickname
-				var name = escapeHtml(message.name);
-
-				// notify everyone of the change
+				var oldname = session.name;
+				session.name = sanitizeName(message.name);
 				io.broadcast({
-					type:'NICK'
-					,uuid:session.uuid
-					,oldname:session.name
-					,name:name
-				});
-				util.log('user:'+session.uuid+':'+session.name+' is now '+name);
-				session.name = name;
+			                type:'NICK'
+			                ,uuid:session.uuid
+			                ,oldname:oldname
+			                ,name:session.name
+			        });
+				util.log('user:'+session.uuid+':'+oldname+' is now '+session.name);
 				break;
 
 			case 'READY': // user is ready for music
@@ -121,15 +124,14 @@ io.on('connection', function(client){
 
 			case 'USER': // user has joined the page
 				session.uuid = message.uuid;
-				if(message.name) {
-					session.name = escapeHtml(message.name);
-				}
-				util.log('Client '+client.sessionId+' user:'+session.uuid+' name:'+session.name+' ip:'+client.connection.remoteAddress);
+				session.name = sanitizeName(message.name);
 				client.send({
-					type:'NICK'
-					,uuid:session.uuid
-					,name:session.name
-				});
+			                type:'NICK'
+			                ,uuid:session.uuid
+			                ,name:session.name
+			        });
+				util.log('Client '+client.sessionId+' user:'+session.uuid+' name:'+session.name+' ip:'+client.connection.remoteAddress);
+
 				if((session.uuid in clients) == false) {
 					client.broadcast({
 						type:'JOIN'
@@ -554,4 +556,17 @@ function unlinkFile(filename) {
         fs.unlink(filename, function(e) {
                 util.log('Unlink '+(e?e:filename));
         });
+}
+
+function sanitizeName(newnick) {
+	var sanitized = '';
+	if(newnick === null) {
+		sanitized = name.generate();
+	} else {
+		sanitized = escapeHtml(newnick.trim());
+		if(sanitized == '') {
+			sanitized = name.generate();
+		}
+	}
+	return sanitized;
 }
