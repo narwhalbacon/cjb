@@ -36,7 +36,7 @@ function formatPlayingSong(song) {
 function formatSong(song, status) {
 	var html = '';
 	html += '<span class="title">'+(song.title||song.filename||'Unknown Title')+'</span>';
-	if(song.state>1) {
+	if(song.state == 0) {
 		html += ' by <span class="artist">'+(song.artist||'Unknown Artist')+'</span>';
 	}
 	if(song.album) {
@@ -46,16 +46,20 @@ function formatSong(song, status) {
 	}
 	if(status) {
 		switch(song.state) {
-			case 0:
+			case 0: // uploading
 				html+= ' <span class="state">(uploading:'+song.progress+'%)</span>';
 				break;
 
-			case 1:
+			case 1: // waiting to transcode
+				html+= ' <span class="state">(pending)</span>';
+				break;
+
+			case 2: // transcoding
 				html+= ' <span class="state">(processing)</span>';
 				break;
 
-			case 2: // pending
-			case 3: // playing
+			case 3: // pending
+			case 4: // playing
 				html += ' (<span class="length'+(song.length>(10*60*1000)?' long':'')+'">'+song.duration+'</span>)';
 				break;
 

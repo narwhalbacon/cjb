@@ -78,7 +78,9 @@ server.listen(port);
 var currentSongStarted = 0;	// timestamp of when current song was started
 var playTimer = null;		// setTimout for current song
 var songs = {};			// song data
+var fileinfo = {};		// non-transcoded locations of songs
 var queue = [];			// FIFO queue songs UUIDs
+var transCount = 0;		// number of concurrent processes transcoding
 var sessions = {};		// who is at the website
 var clients = {};
 
@@ -155,9 +157,8 @@ io.on('connection', function(client){
 				break;
 
 			default: // should never see this
-				util.log('user:'+session.uuid+
-					':'+session.name+
-					' Unknown message: '+message);
+				util.log('user:'+session.uuid+':'+session.name
+					+'; unknown message:'+util.inspect(message, true, null));
 				break;
 		}
 	});
@@ -241,36 +242,35 @@ server.post('/upload', function(req,res) {
 				,cover:0
 				,who:{uuid:user.uuid, name:user.name}
 				,progress:0		// %
-				,state:0		// 0:uploading, 1:processing, 2:ready, 3:playing, 4:removed
+				,state:0		// 0:uploading, 1:waiting, 2:processing, 3:ready, 4:playing, 5:removed
 				,ts:new Date().getTime()
 			};
 
-			data[key] = {
-				fileinfo:file
-				,song:song
-				,user:user
-			};
+
+			data[key] = song;
 
 			songs[song.uuid] = song;
+			fileinfo[song.uuid] = file;
+
 			queue.push(song.uuid);
 			io.broadcast({
 				'type':'ENQUEUE'
 				,song:song
 			});
-			util.log('user:'+user.uuid+':'+user.name+
-				' uploading song:'+song.uuid+':'+file.name);
+			util.log('user:'+user.uuid+':'+user.name
+				+' uploading song:'+song.uuid+':'+file.name
+				+'; path:'+file.path);
 		}
 	});
 
 	form.on('progress', function(bytesReceived, bytesExpected) {
-		if(data[key] == undefined ||
-		   data[key].song == undefined) {
+		if((key in data) === false) {
 			return;
 		}
 		var now = new Date().getTime();
 		var progress = bytesExpected ?
 			Math.floor((bytesReceived/bytesExpected)*100) : 0;
-		var song = data[key].song;
+		var song = data[key];
 		var last = {progress:song.progress, ts:song.ts};
 
 		song.ts = now;
@@ -289,16 +289,7 @@ server.post('/upload', function(req,res) {
 	form.on('end', function() {
 		res.writeHead(200, {'content-type': 'text/plain'});
 		res.end('ok');
-
-		var info = data[key];
-		delete data[key];
-
-		info.song.progress = 100;
-		info.song.ts = new Date().getTime();
-		util.log('user:'+info.user.uuid
-		  +' finished uploading song:'+info.song.uuid
-		  +'; size:'+info.fileinfo.size);
-		processSong(info.song, info.fileinfo);
+		finalizeSong(data, key);
 	});
 
 	form.parse(req);
@@ -325,6 +316,9 @@ util.log('Listening on http://0.0.0.0:' + port );
 
 // check queue every five seconds
 setInterval(playQueue, 5000);
+
+// check queue every five seconds
+setInterval(processQueue, 5000);
 
 // update clients every 60 seconds
 setInterval(function() {
@@ -357,12 +351,19 @@ setInterval(function() {
 			}
 			delete songs[uuid];
 		} else {
-			if(songs[uuid].state < 2 &&
+			if(songs[uuid].state == 0 &&
 			   (now-songs[uuid].ts) > (5*60*1000)) {
 				// hasn't been updated in 5 minutes; dequeue
-				util.log('Removing song '+uuid+' due to inactivity.');
+				util.log('Removing song '+uuid+' due to upload inactivity.');
 				removeFromQueue(uuid);
-			} else if (songs[uuid].state == 2 &&
+
+			} else if (songs[uuid].state == 2 && // processing
+			   (now-songs[uuid].ts) > (10*60*1000)) {
+				// hasn't been updated in 5 minutes; dequeue
+				util.log('Removing song '+uuid+' due to transcode inactivity.');
+				removeFromQueue(uuid);
+
+			} else if (songs[uuid].state == 3 &&
 			   songs[uuid].length < 1000) {
 				// song was processed, but has no length
 				util.log('Removing song '+uuid+' due to length.');
@@ -370,6 +371,13 @@ setInterval(function() {
 			}
 		}
 	}
+	for(var i in fileinfo) {
+		if((i in songs) === false) {
+			util.log('Removing '+uuid+' from fileinfo cache.');
+		}
+	}
+			
+
 }, 60000); // update data every 60 seconds
 
 // this handles sending the PLAY signal to clients when the next song is ready
@@ -379,10 +387,10 @@ function playQueue() {
 		// find the first song that is ready to play
 		for(var idx in queue) {
 			var song = songs[queue[idx]];
-			if(song.state == 2) { // ready state
+			if(song.state == 3) { // ready state
 				// if not the first song in the queue, send it to the top
 				if(idx > 0) {
-					util.log('promoting song:'+song.uuid);
+					util.log('promoting song:'+song.uuid+':'+song.filename);
 					var a = queue.splice(idx, 1);
 					queue.splice(0, 0, a[0]);
 					io.broadcast({
@@ -392,14 +400,14 @@ function playQueue() {
 					});
 				}
 
-				util.log('song:'+song.uuid+' playing');
+				util.log('song:'+song.uuid+':'+song.filename+' playing; ('+song.duration+')');
 				currentSongStarted = new Date().getTime();
 				io.broadcast({
 					type:'PLAY'
 					,song:song
 					,position:0
 				});
-				song.state=3; // playing
+				song.state = 4; // playing
 				playTimer = setTimeout(function(){
 					removeFromQueue(song.uuid);
 				}, song.length+5000); // sleep an extra five seconds to ensure everyone hears the song
@@ -409,18 +417,25 @@ function playQueue() {
 	}
 }
 
-// this processes the uploaded file.
-// both the gettags.pl and ffmpeg programs are run concurrently and one may
-// finish before the other.  The song may actually start playing before the mp3
-// tags and artwork are updated.
-function processSong(song, fileinfo) {
-	if(song.state > 0) { return; }
-
+function finalizeSong(data, key) {
+        if((key in data) === false) {
+                setTimeout(function() { finalizeSong(data, key); }, 1000);
+                return;
+        }
+        var song = data[key];
+        delete data[key];
+        
+        song.progress = 100;
+        song.ts = new Date().getTime();
 	song.state=1; // processing
 	io.broadcast({type:'UPDATE', song:song});
 
+        util.log('user:'+song.who.uuid+':'+song.who.name
+          +' finished uploading song:'+song.uuid+':'+song.filename
+          +'; size:'+fileinfo[song.uuid].size);
+
 	if(config.server.gettags) {
-		var gettags = spawn(__dirname+'/gettags.pl', [fileinfo.path, song.uuid]);
+		var gettags = spawn(__dirname+'/gettags.pl', [fileinfo[song.uuid].path, song.uuid]);
 		gettags.stdout.on('data', function(data) {
 			try {
 				eval('var tags='+data.toString('ascii')); 
@@ -431,15 +446,38 @@ function processSong(song, fileinfo) {
 				song.url = tags.url;
 				io.broadcast({type:'UPDATE', song:song});
 			} catch(e) {
-				util.log('song:'+song.uuid+' caught exception while trying to read tags');
+				util.log('song:'+song.uuid+':'+song.filename+' caught exception while trying to read tags');
 			}
 		});
 	}
+}
 
+function processQueue() {
+	if(queue.length) {
+		for(var i in queue) {
+			if(transCount >= config.server.maxtranscode) {
+				break;
+			}
+
+			var song = songs[queue[i]];
+			if(song.state == 1) {
+				transcodeSong(song);
+			}
+		}
+	}
+}
+
+function transcodeSong(song) {
+	transCount += 1;
+	util.log('song:'+song.uuid+':'+song.filename+' transcoding');
+
+	song.state = 2;	// processing
 	song.ts = new Date().getTime();
+	io.broadcast({type:'UPDATE', song:song});
+
 	var time = new RegExp('time=([\\d\\.]+)');
 	var ffmpeg = spawn('ffmpeg', [
-		'-i', fileinfo.path,
+		'-i', fileinfo[song.uuid].path,
 		'-acodec', 'libmp3lame',
 		'-ab', '56000', // or 128000 or 192000; bigger = more bandwidth 
 		'-ar', '44100', 
@@ -451,21 +489,28 @@ function processSong(song, fileinfo) {
 		if(match) { song.length = match[1]*1000; }
 	});
 	ffmpeg.on('exit', function(code) {
-		unlinkFile(fileinfo.path);
-		song.duration = formatDuration(song.length);
-		song.state=2; // ready
-		io.broadcast({type:'UPDATE', song:song});
+		unlinkFile(fileinfo[song.uuid].path);
+		delete fileinfo[song.uuid];
+		transCount -= 1;
+
+		if(song.state == 2) {
+			song.duration = formatDuration(song.length);
+			song.state = 3; // ready
+			io.broadcast({type:'UPDATE', song:song});
+		}
 		fs.stat(__dirname+'/static/music/'+song.uuid+'.mp3', function(e,s) {
 			if(e) {
-				util.log('finished processing song:'+song.uuid);
+				util.log('song:'+song.uuid+':'+song.filename+' transcoding finished');
 				util.log(e);
 			} else {
-				util.log('finished processing song:'+song.uuid
+				util.log('song:'+song.uuid+':'+song.filename+' transcoding finished'
 					+'; size:'+s.size);
 			}
 		});
 	});
 }
+
+
 
 // remove the song from the queue, sending a stop signal if it's the currently
 // playing song
@@ -475,17 +520,17 @@ function removeFromQueue(uuid, session) {
 
 	var song = songs[uuid];
 	if(session) {
-		util.log('user:'+session.uuid+':'+session.name+' removed song:'+uuid+' from the queue');
+		util.log('user:'+session.uuid+':'+session.name+' removed song:'+uuid+':'+song.filename+' from the queue');
 	}
 	if(i == 0 && currentSongStarted) {
-		util.log('song:'+uuid+' finished playing');
+		util.log('song:'+uuid+':'+song.filename+' finished playing');
 		clearTimeout(playTimer);
 		io.broadcast({type:'STOP', song:song});
 		currentSongStarted = 0; // stop
 	}
 	queue.splice(i,1);
 
-	song.state=4;	// removed
+	song.state = 5;	// removed
 	if(session) {
 		io.broadcast({type:'DEQUEUE', song:song, who:session.name});
 	} else {
@@ -522,6 +567,7 @@ function getSongs() {
 	var data = {};
 	for(var i in queue) {
 		data[queue[i]] = songs[queue[i]];
+
 	}
 	return data;
 }
@@ -554,7 +600,7 @@ function formatDuration(length) {
 
 function unlinkFile(filename) {
         fs.unlink(filename, function(e) {
-                util.log('Unlink '+(e?e:filename));
+                util.log('Unlinked '+(e?e:filename));
         });
 }
 
