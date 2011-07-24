@@ -1,6 +1,8 @@
 htdocs/images/*
 !htdocs/images/nocover.jpg
 htdocs/music/*
+!htdocs/music/.blankfile
 logs/*
 uploads/*
+!uploads/.blankfile
 *.pyc
