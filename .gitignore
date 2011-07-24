@@ -1,0 +1,6 @@
+htdocs/images/*
+!htdocs/images/nocover.jpg
+htdocs/music/*
+logs/*
+uploads/*
+*.pyc
