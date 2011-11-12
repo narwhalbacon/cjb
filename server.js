@@ -1,9 +1,5 @@
 #!/usr/bin/env node
 
-//setup Dependencies
-require(__dirname + "/lib/setup")
-        .ext( __dirname + "/lib");
-
 var express = require('express')
 	,formidable = require('formidable')
 	,fs = require('fs')
