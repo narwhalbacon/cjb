@@ -3,8 +3,11 @@
 var express = require('express')
 	,formidable = require('formidable')
 	,fs = require('fs')
-	,io = require('socket.io')
-	,util = require('util')
+  ,util = require('util')
+  ,morgan = require('morgan')
+  ,bodyParser = require('body-parser')
+  ,cookieParser = require('cookie-parser')
+  ,errorhandler = require('errorhandler')
 	;
 
 // cjb stuff
@@ -14,7 +17,7 @@ var cjbutil = require('cjbutil')
 	,names = require('names')
 	,sessions = require('sessions')
 	,queue = require('queue')
-	;
+;
 
 var state = {			// holds the current state of things
 	scnt: 0
@@ -38,43 +41,44 @@ for(var i in directories) {
 	};
 }
 
-var app = express.createServer();
-app.use(express.logger());
-app.use(express.bodyParser());
-app.use(express.cookieParser());
+var app = express();
+var server = require('http').Server(app);
+var io = require('socket.io')(server);
 
-app.configure(function() {
-	app.use(express.static(__dirname + '/htdocs'));
-	app.use(express.errorHandler({
+app.use(morgan('combined'));
+app.use(bodyParser());
+app.use(cookieParser());
+
+app.use(express.static(__dirname + '/htdocs'));
+app.use(errorhandler({
 		dumpExceptions: true
 		,showStack: true
-	}));
-});
+}));
 
-var socketio = io.listen(app);
-socketio.enable('browser client minification');
-socketio.enable('browser client etag');
-socketio.set('log level', 1);
-socketio.configure('development', function() {
-	socketio.disable('browser client minification');
-	socketio.disable('browser client etag');
-	socketio.set('log level', 3);
-});
 
-app.listen(config.server.port);
+// io.enable('browser client minification');
+// io.enable('browser client etag');
+// io.set('log level', 1);
+// socketio.configure('development', function() {
+// 	socketio.disable('browser client minification');
+// 	socketio.disable('browser client etag');
+// 	socketio.set('log level', 3);
+// });
+
+server.listen(config.server.port);
 
 // add our own little function
-socketio.cjbnotify = function(message) {
+io.cjbnotify = function(message) {
 	history.enqueueChat('NOTICE', message);
 	this.sockets.emit('NOTICE', message);
 }
 
-history.setSocketIO(socketio);
-queue.setSocketIO(socketio);
+history.setSocketIO(io);
+queue.setSocketIO(io);
 
-socketio.cjbnotify('server started');
+io.cjbnotify('server started');
 
-socketio.sockets.on('connection', function(socket) {
+io.sockets.on('connection', function(socket) {
 	var session = sessions.create(socket.id);
 
 	socket.on('disconnect', function() {
@@ -83,8 +87,8 @@ socketio.sockets.on('connection', function(socket) {
 				+' '+session.uuid
 				+':'+session.name);
 //				+':'+socket.connection.remoteAddress);
-			//socketio.cjbnotify(session.name+' has left');
-			socketio.sockets.emit('PART', session.uuid);
+			//io.cjbnotify(session.name+' has left');
+			io.sockets.emit('PART', session.uuid);
 		}
 		sessions.destroy(socket.id);
 	});
@@ -112,8 +116,8 @@ socketio.sockets.on('connection', function(socket) {
 //			+':'+socket.connection.remoteAddress);
 
 		// only broadcast to everyone if new connection
-		//socketio.cjbnotify(session.name+' has joined');
-		socketio.sockets.emit('JOIN', {
+		//io.cjbnotify(session.name+' has joined');
+		io.sockets.emit('JOIN', {
 			uuid:session.uuid
 			,name:session.name
 			});
@@ -144,14 +148,14 @@ socketio.sockets.on('connection', function(socket) {
 				} else {
 					message += 'to: '+theme;
 				}
-				socketio.cjbnotify(message);
+				io.cjbnotify(message);
 				history.setTheme(theme);
 			} else {
 				history.enqueueChat(
 					'MSG'
 					,{name:session.name, message:message}
 				);
-				socketio.sockets.emit('MSG', {
+				io.sockets.emit('MSG', {
 					uuid:session.uuid
 					, message:message
 				});
@@ -169,8 +173,8 @@ socketio.sockets.on('connection', function(socket) {
 		session.name = sanitized;
 
 		util.log(message);
-		socketio.cjbnotify(message);
-		socketio.sockets.emit('NICK', {
+		io.cjbnotify(message);
+		io.sockets.emit('NICK', {
 			uuid:session.uuid
 			,name:session.name
 			});
@@ -215,7 +219,7 @@ app.post('/upload', function(req,res) {
 		song.progress = bytesExpected ?
 			Math.floor((bytesReceived/bytesExpected)*100) : 0;
 		song.ts = new Date().getTime();
-		socketio.sockets.volatile.emit('UPDATE', song);
+		io.sockets.volatile.emit('UPDATE', song);
 	});
 
 	form.on('end', function() {

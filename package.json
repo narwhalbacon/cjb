@@ -1,0 +1,19 @@
+{
+    "name": "cjb",
+    "version": "1.0.0",
+    "description": "Collaborative Jukebox",
+    "author": "narwhalbacon",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "express": "",
+        "formidable": "",
+        "socket.io": "",
+        "morgan": "",
+        "body-parser": "",
+        "cookie-parser": "",
+        "errorhandler": ""
+    }
+}
